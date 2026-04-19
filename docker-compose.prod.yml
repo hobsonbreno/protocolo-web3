@@ -1,0 +1,7 @@
+services:
+  nexus-frontend:
+    image: ghcr.io/hobsonbreno/protocolo-web3-frontend:latest
+    container_name: nexus-protocol-prod
+    ports:
+      - "8080:80"
+    restart: always
