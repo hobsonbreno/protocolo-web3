@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: protocol-frontend
-        image: seu-usuario-docker/protocolo-web3:latest
+        image: hobsonbreno/protocolo-web3:latest
         ports:
         - containerPort: 80
 ---
