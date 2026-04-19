@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: protocol-frontend
-        image: hobsonbreno/protocolo-web3:latest
+        image: ghcr.io/hobsonbreno/protocolo-web3-frontend:latest
         ports:
         - containerPort: 80
 ---
