@@ -1,7 +1,8 @@
 import { network } from "hardhat";
 
 async function main() {
-  const { ethers } = await network.create();
+  // @ts-ignore - Hardhat 3 novo padrão de inicialização
+  const { ethers, networkName } = await network.create();
   const [deployer] = await ethers.getSigners();
 
   console.log("Deploying contracts with the account:", deployer.address);
@@ -9,16 +10,18 @@ async function main() {
   // 1. NexusToken
   const token = await ethers.deployContract("NexusToken", [deployer.address]);
   await token.waitForDeployment();
-  console.log("NexusToken deployed to:", await token.getAddress());
+  const tokenAddress = await token.getAddress();
+  console.log("NexusToken deployed to:", tokenAddress);
 
   // 2. NexusNFT
   const nft = await ethers.deployContract("NexusNFT", [deployer.address]);
   await nft.waitForDeployment();
-  console.log("NexusNFT deployed to:", await nft.getAddress());
+  const nftAddress = await nft.getAddress();
+  console.log("NexusNFT deployed to:", nftAddress);
 
   // 3. NexusStaking
   let priceFeedAddress;
-  if (network.name === "localhost" || network.name === "hardhat") {
+  if (networkName === "localhost" || networkName === "hardhat") {
     console.log("Detectada rede local. Fazendo deploy do MockV3Aggregator...");
     const mockOracle = await ethers.deployContract("MockV3Aggregator", [2000n * 10n ** 8n]);
     await mockOracle.waitForDeployment();
@@ -30,8 +33,8 @@ async function main() {
   }
 
   const staking = await ethers.deployContract("NexusStaking", [
-    await token.getAddress(),
-    await token.getAddress(),
+    tokenAddress,
+    tokenAddress,
     priceFeedAddress,
     deployer.address
   ]);
@@ -39,7 +42,7 @@ async function main() {
   console.log("NexusStaking deployed to:", await staking.getAddress());
 
   // 4. NexusDAO
-  const dao = await ethers.deployContract("NexusDAO", [await token.getAddress(), deployer.address]);
+  const dao = await ethers.deployContract("NexusDAO", [tokenAddress, deployer.address]);
   await dao.waitForDeployment();
   console.log("NexusDAO deployed to:", await dao.getAddress());
 

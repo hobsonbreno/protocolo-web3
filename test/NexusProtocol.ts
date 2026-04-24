@@ -1,11 +1,10 @@
 import { expect } from "chai";
 import { network } from "hardhat";
 
-const { ethers, networkHelpers } = await network.create();
-const { loadFixture } = networkHelpers;
-
 describe("Nexus Protocol", function () {
   async function deployProtocolFixture() {
+    // @ts-ignore - Hardhat 3 novo padrão de inicialização
+    const { ethers, networkHelpers } = await network.create();
     const [owner, otherAccount] = await ethers.getSigners();
 
     // 1. Deploy NexusToken
@@ -28,18 +27,18 @@ describe("Nexus Protocol", function () {
     // 5. Deploy NexusDAO
     const dao = await ethers.deployContract("NexusDAO", [await token.getAddress(), owner.address]);
 
-    return { token, nft, staking, dao, oracle, owner, otherAccount };
+    return { token, nft, staking, dao, oracle, owner, otherAccount, ethers, networkHelpers };
   }
 
   describe("NexusToken", function () {
     it("Should have correct name and symbol", async function () {
-      const { token } = await loadFixture(deployProtocolFixture);
+      const { token, networkHelpers } = await deployProtocolFixture();
       expect(await token.name()).to.equal("Nexus Token");
       expect(await token.symbol()).to.equal("NEX");
     });
 
     it("Should mint initial supply to owner", async function () {
-      const { token, owner } = await loadFixture(deployProtocolFixture);
+      const { token, owner, ethers } = await deployProtocolFixture();
       const ownerBalance = await token.balanceOf(owner.address);
       expect(ownerBalance).to.equal(ethers.parseEther("1000000"));
     });
@@ -47,7 +46,7 @@ describe("Nexus Protocol", function () {
 
   describe("NexusNFT", function () {
     it("Should mint a new NFT", async function () {
-      const { nft, otherAccount } = await loadFixture(deployProtocolFixture);
+      const { nft, otherAccount } = await deployProtocolFixture();
       await nft.safeMint(otherAccount.address, "ipfs://test");
       expect(await nft.ownerOf(0)).to.equal(otherAccount.address);
       expect(await nft.tokenURI(0)).to.equal("ipfs://test");
@@ -56,7 +55,7 @@ describe("Nexus Protocol", function () {
 
   describe("NexusStaking", function () {
     it("Should stake tokens and earn rewards", async function () {
-      const { token, staking, owner } = await loadFixture(deployProtocolFixture);
+      const { token, staking, owner, ethers, networkHelpers } = await deployProtocolFixture();
       const stakeAmount = ethers.parseEther("100");
 
       // Approve and Stake
@@ -69,11 +68,11 @@ describe("Nexus Protocol", function () {
       await networkHelpers.time.increase(3600);
 
       const earned = await staking.earned(owner.address);
-      expect(earned).to.be.gt(0n);
+      expect(earned > 0n).to.be.true;
     });
 
     it("Should adjust rewards based on oracle price", async function () {
-      const { staking, oracle } = await loadFixture(deployProtocolFixture);
+      const { staking, oracle } = await deployProtocolFixture();
       
       const rateAt2000 = await staking.getAdjustedRewardRate();
       
@@ -87,7 +86,7 @@ describe("Nexus Protocol", function () {
 
   describe("NexusDAO", function () {
     it("Should create and vote on proposals", async function () {
-      const { dao, token, owner } = await loadFixture(deployProtocolFixture);
+      const { dao, token, owner } = await deployProtocolFixture();
       
       await dao.createProposal("Increase staking rewards");
       await dao.vote(0);

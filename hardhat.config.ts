@@ -1,8 +1,19 @@
+import { HardhatUserConfig, defineConfig } from "hardhat/config";
+import ethersPlugin from "@nomicfoundation/hardhat-ethers";
+import verifyPlugin from "@nomicfoundation/hardhat-verify";
+import networkHelpersPlugin from "@nomicfoundation/hardhat-network-helpers";
 import hardhatToolboxMochaEthersPlugin from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
-import { configVariable, defineConfig } from "hardhat/config";
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 export default defineConfig({
-  plugins: [hardhatToolboxMochaEthersPlugin],
+  plugins: [
+    ethersPlugin,
+    verifyPlugin,
+    networkHelpersPlugin,
+    hardhatToolboxMochaEthersPlugin
+  ],
   solidity: {
     profiles: {
       default: {
@@ -20,19 +31,15 @@ export default defineConfig({
     },
   },
   networks: {
-    hardhatMainnet: {
-      type: "edr-simulated",
-      chainType: "l1",
-    },
-    hardhatOp: {
-      type: "edr-simulated",
-      chainType: "op",
-    },
     sepolia: {
       type: "http",
       chainType: "l1",
-      url: configVariable("SEPOLIA_RPC_URL"),
-      accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
+      url: process.env.SEPOLIA_RPC_URL || "",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
   },
+  // @ts-ignore
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY
+  }
 });
