@@ -105,14 +105,20 @@ export default function Teleprompter() {
   const timerInterval = useRef<any>(null);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
-  const channel = useRef(new BroadcastChannel('nexus_studio_channel'));
+  const channel = useRef<BroadcastChannel | null>(null);
 
   useEffect(() => {
+    // Inicializa o canal apenas uma vez
+    if (!channel.current) {
+      channel.current = new BroadcastChannel('nexus_studio_channel');
+      console.log("Studio: Canal de comunicação aberto.");
+    }
+
     async function startWebcam() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         if (videoRef.current) videoRef.current.srcObject = stream;
-      } catch (err) { console.error(err); }
+      } catch (err) { console.error("Erro webcam:", err); }
     }
     startWebcam();
     
@@ -127,6 +133,7 @@ export default function Teleprompter() {
       if (videoRef.current?.srcObject) {
         (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
       }
+      channel.current?.close();
     };
   }, []);
 
@@ -172,10 +179,10 @@ export default function Teleprompter() {
         if (!isRecording && mediaRecorder.current?.state === 'inactive') return;
         
         if (ctx) {
-          // 1. Desenha a tela inteira
+          // 1. Desenha a janela capturada (pode ser o App, Terminal, etc.)
           ctx.drawImage(screenVideo, 0, 0, canvas.width, canvas.height);
           
-          // 2. Desenha a webcam no canto (Overlay circular)
+          // 2. Desenha o overlay da webcam (Bolinha) no canto inferior direito
           const camSize = canvas.width * 0.15; // 15% da largura da tela
           const margin = 30;
           const x = canvas.width - camSize - margin;
@@ -189,7 +196,7 @@ export default function Teleprompter() {
           ctx.drawImage(webcamVideo, x, y, camSize, camSize);
           ctx.restore();
           
-          // Borda da webcam
+          // Borda estilizada para a webcam
           ctx.strokeStyle = '#10b981';
           ctx.lineWidth = 5;
           ctx.beginPath();
@@ -249,7 +256,8 @@ export default function Teleprompter() {
 
   const changeScene = (idx: number) => {
     setCurrentScene(idx);
-    channel.current.postMessage({
+    console.log(`Studio: Enviando comando para cena ${idx} - ${SCRIPT[idx].type}`);
+    channel.current?.postMessage({
       type: 'CHANGE_VIEW',
       viewType: SCRIPT[idx].type,
       file: SCRIPT[idx].file,
@@ -258,9 +266,18 @@ export default function Teleprompter() {
   };
 
   const copyToClipboard = (text: string) => {
-    if (text === "Nenhum") return;
-    navigator.clipboard.writeText(text);
-    alert(`Comando [${text}] copiado!`);
+    if (!text || text === "Nenhum") {
+      alert("Esta cena não possui comandos automáticos.");
+      return;
+    }
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        alert(`Comando [${text}] copiado com sucesso!`);
+      })
+      .catch(err => {
+        console.error("Erro ao copiar:", err);
+        alert("Falha ao copiar comando. Verifique as permissões do navegador.");
+      });
   };
 
   const formatTime = (s: number) => {
@@ -269,16 +286,29 @@ export default function Teleprompter() {
     return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
+  const togglePiP = async () => {
+    if (videoRef.current && document.pictureInPictureEnabled) {
+      try {
+        if (document.pictureInPictureElement) await document.exitPictureInPicture();
+        else await videoRef.current.requestPictureInPicture();
+      } catch (err) { console.error(err); }
+    }
+  };
+
   return (
     <div style={{ background: '#0f172a', minHeight: '100vh', color: 'white', padding: '1.5rem', fontFamily: 'Inter, sans-serif' }}>
       
-      {/* MONITOR DE RETORNO */}
-      <div style={{ 
-        position: 'fixed', bottom: '2rem', right: '2rem', width: '300px', height: '170px', 
-        borderRadius: '16px', overflow: 'hidden', border: '3px solid #38bdf8', zIndex: 100, background: '#000',
-        boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
-      }}>
-        <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(56, 189, 248, 0.8)', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '0.6rem', fontWeight: 'bold' }}>RETORNO</div>
+      {/* MONITOR DE RETORNO (Bolinha de Visualização) */}
+      <div 
+        onClick={togglePiP}
+        title="Clique para destacar (PiP)"
+        style={{ 
+          position: 'fixed', bottom: '2rem', left: '2rem', width: '180px', height: '180px', 
+          borderRadius: '50%', overflow: 'hidden', border: '4px solid #10b981', zIndex: 1000, background: '#000',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.5)', cursor: 'pointer'
+        }}
+      >
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(16, 185, 129, 0.8)', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '0.5rem', fontWeight: 'bold', zIndex: 10, pointerEvents: 'none' }}>RETORNO</div>
         <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </div>
 
@@ -293,7 +323,10 @@ export default function Teleprompter() {
         
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <button 
-            onClick={() => channel.current.postMessage({ type: 'FORCE_CAM' })}
+            onClick={() => {
+              console.log("Studio: Forçando ativação da webcam na Dell...");
+              channel.current?.postMessage({ type: 'FORCE_CAM' });
+            }}
             className="btn" style={{ width: 'auto', background: '#38bdf8', padding: '0.8rem 1.5rem', fontSize: '0.7rem' }}
           >
             🎥 LIGAR CAM NA DELL
@@ -358,13 +391,21 @@ export default function Teleprompter() {
             
             <button 
               onClick={() => copyToClipboard(SCRIPT[currentScene].command)}
-              style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '1rem', borderRadius: '15px', border: '2px solid #10b981', cursor: 'pointer', textAlign: 'left', transition: '0.2s' }}
-              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)'}
-              onMouseOut={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)'}
+              style={{ 
+                background: SCRIPT[currentScene].command === "Nenhum" ? 'rgba(148, 163, 184, 0.1)' : 'rgba(16, 185, 129, 0.1)', 
+                padding: '1rem', borderRadius: '15px', 
+                border: SCRIPT[currentScene].command === "Nenhum" ? '2px solid #475569' : '2px solid #10b981', 
+                cursor: SCRIPT[currentScene].command === "Nenhum" ? 'not-allowed' : 'pointer', 
+                textAlign: 'left', transition: '0.2s', width: '100%' 
+              }}
+              onMouseOver={(e) => { if(SCRIPT[currentScene].command !== "Nenhum") e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)' }}
+              onMouseOut={(e) => { if(SCRIPT[currentScene].command !== "Nenhum") e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)' }}
             >
-              <h2 style={{ color: '#10b981', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.4rem' }}>💻 COPIAR COMANDO:</h2>
-              <p style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fff' }}>{SCRIPT[currentScene].command}</p>
-              <span style={{ fontSize: '0.6rem', color: '#10b981', marginTop: '0.5rem', display: 'block' }}>[ CLIQUE PARA COPIAR ]</span>
+              <h2 style={{ color: SCRIPT[currentScene].command === "Nenhum" ? '#94a3b8' : '#10b981', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.4rem' }}>💻 COPIAR COMANDO:</h2>
+              <p style={{ fontSize: '1.1rem', fontWeight: 'bold', color: SCRIPT[currentScene].command === "Nenhum" ? '#94a3b8' : '#fff' }}>{SCRIPT[currentScene].command}</p>
+              <span style={{ fontSize: '0.6rem', color: SCRIPT[currentScene].command === "Nenhum" ? '#475569' : '#10b981', marginTop: '0.5rem', display: 'block' }}>
+                {SCRIPT[currentScene].command === "Nenhum" ? "[ SEM COMANDOS NESTA CENA ]" : "[ CLIQUE PARA COPIAR ]"}
+              </span>
             </button>
           </div>
 

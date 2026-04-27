@@ -9,7 +9,8 @@ export const TOKEN_ABI = [
 export const NFT_ABI = [
   "function safeMint(address to, string uri) returns (bool)",
   "function ownerOf(uint256 tokenId) view returns (address)",
-  "function tokenURI(uint256 tokenId) view returns (string)"
+  "function tokenURI(uint256 tokenId) view returns (string)",
+  "function balanceOf(address) view returns (uint256)"
 ];
 
 export const STAKING_ABI = [

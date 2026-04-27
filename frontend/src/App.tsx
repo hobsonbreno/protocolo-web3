@@ -22,6 +22,7 @@ function App() {
   const [isWrongNetwork, setIsWrongNetwork] = useState<boolean>(false);
   const [mintAmount, setMintAmount] = useState<string>("100");
   const [stakeAmount, setStakeAmount] = useState<string>("10");
+  const [proposalDescription, setProposalDescription] = useState<string>("Nova Proposta de Melhoria");
   const [remoteView, setRemoteView] = useState<{ type: string, file: string, code: string }>({ type: 'LIVE', file: '', code: '' });
   const [isCamOn, setIsCamOn] = useState(false);
   const [isConnectedToStudio, setIsConnectedToStudio] = useState(false);
@@ -77,11 +78,16 @@ function App() {
       channel.postMessage({ type: 'HEARTBEAT_ACK' });
     }, 1000);
     channel.onmessage = (event) => {
+      console.log("App: Mensagem recebida do Studio:", event.data.type);
       if (event.data.type === 'CHANGE_VIEW') {
+        console.log("App: Alterando visão para:", event.data.viewType);
         setRemoteView({ type: event.data.viewType, file: event.data.file, code: event.data.code });
         setIsConnectedToStudio(true);
       }
-      if (event.data.type === 'FORCE_CAM') startWebcam();
+      if (event.data.type === 'FORCE_CAM') {
+        console.log("App: Comando de câmera recebido.");
+        startWebcam();
+      }
     };
     return () => { channel.close(); clearInterval(heartbeat); };
   }, []);
@@ -204,6 +210,18 @@ function App() {
     } catch { alert("Erro no NFT."); }
   };
 
+  const handleCreateProposal = async () => {
+    if (!account) return;
+    try {
+      const provider = new BrowserProvider((window as any).ethereum);
+      const signer = await provider.getSigner();
+      const dao = new Contract(ADDRESSES.dao, DAO_ABI, signer);
+      await (await dao.createProposal(proposalDescription)).wait();
+      loadData(account);
+      alert("Proposta criada!");
+    } catch { alert("Erro ao criar proposta."); }
+  };
+
   const handleVote = async (id: number) => {
     if (!account) return;
     try {
@@ -244,35 +262,6 @@ function App() {
           </div>
         </div>
         {remoteView.type === 'FILE' && <div style={{ background: 'rgba(56, 189, 248, 0.1)', padding: '0.6rem 1.5rem', borderRadius: '30px', border: '1px solid #38bdf8', color: '#38bdf8', fontWeight: 'bold', fontSize: '0.9rem' }}>📂 {remoteView.file}</div>}
-      </div>
-
-      {/* WEBCAM DINÂMICA PARA APRESENTAÇÃO */}
-      <div 
-        style={{ 
-          position: 'fixed', 
-          bottom: remoteView.type === 'FILE' ? 'auto' : '2rem',
-          top: remoteView.type === 'FILE' ? '2rem' : 'auto',
-          right: '2rem', 
-          width: remoteView.type === 'FILE' ? '280px' : '220px', 
-          height: remoteView.type === 'FILE' ? '280px' : '220px', 
-          borderRadius: '50%', 
-          overflow: 'hidden', 
-          border: `4px solid ${isCamOn ? '#10b981' : '#334155'}`, 
-          zIndex: 1000000, 
-          background: '#000', 
-          boxShadow: remoteView.type === 'FILE' 
-            ? '0 0 50px rgba(16, 185, 129, 0.3), 0 10px 40px rgba(0,0,0,0.8)' 
-            : '0 10px 40px rgba(0,0,0,0.8)',
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-          pointerEvents: 'none'
-        }}
-      >
-        <video ref={videoRef} autoPlay muted playsInline style={{ display: 'none' }} />
-        <canvas ref={canvasRef} width="400" height="400" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        {!isCamOn && <div style={{ color: '#475569', fontSize: '0.7rem', textAlign: 'center', padding: '1rem' }}>CÂMERA OFFLINE<br/><span style={{fontSize:'0.5rem'}}>Use o Studio para ligar</span></div>}
       </div>
 
       <div className="container" style={{ paddingTop: '5rem' }}>
@@ -345,6 +334,10 @@ function App() {
                   )) : <p style={{fontSize:'0.7rem', color:'#94a3b8'}}>Nenhuma proposta ativa.</p>}
                 </div>
                 <div className="stats-row" style={{fontSize:'0.7rem', opacity:0.6}}><span>Propostas totais:</span> <span>{proposals.length}</span></div>
+                <div style={{marginTop:'1rem', borderTop:'1px solid rgba(255,255,255,0.1)', paddingTop:'1rem'}}>
+                  <input type="text" value={proposalDescription} onChange={(e) => setProposalDescription(e.target.value)} style={{width:'100%', marginBottom:'0.5rem', fontSize:'0.7rem'}} placeholder="Descreva a proposta..." />
+                  <button className="btn btn-secondary" onClick={handleCreateProposal} style={{fontSize:'0.7rem'}}>CRIAR PROPOSTA</button>
+                </div>
               </div>
             </div>
           </>
