@@ -256,10 +256,6 @@ function App() {
             <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: isConnectedToStudio ? '#10b981' : '#f43f5e' }}></div>
             <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'white' }}>{isConnectedToStudio ? "STUDIO LIVE" : "STUDIO OFFLINE"}</span>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.85)', padding: '0.4rem', borderRadius: '15px' }}>
-            {!isCamOn && <button onClick={startWebcam} style={{ background: '#38bdf8', border: 'none', borderRadius: '10px', color: 'white', fontSize: '0.7rem', padding: '0.5rem 1.2rem', cursor: 'pointer', fontWeight: 'bold' }}>LIGAR CÂMERA 🎥</button>}
-            <button onClick={togglePiP} style={{ background: '#10b981', border: 'none', borderRadius: '10px', color: 'white', fontSize: '0.7rem', padding: '0.5rem 1.2rem', cursor: 'pointer', fontWeight: 'bold' }}>PIP 🪟</button>
-          </div>
         </div>
         {remoteView.type === 'FILE' && <div style={{ background: 'rgba(56, 189, 248, 0.1)', padding: '0.6rem 1.5rem', borderRadius: '30px', border: '1px solid #38bdf8', color: '#38bdf8', fontWeight: 'bold', fontSize: '0.9rem' }}>📂 {remoteView.file}</div>}
       </div>
